@@ -1,0 +1,14 @@
+{
+  "configure": "build.py",
+  "dependencies": [],
+  "description": "Database management utility",
+  "environment": [],
+  "install": [
+    {
+      "template": "service.yml",
+      "service": "service.yml",
+      "tracked": true
+    }
+  ],
+  "service": "adminer"
+}

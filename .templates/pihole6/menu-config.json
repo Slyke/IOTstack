@@ -1,0 +1,19 @@
+{
+  "configure": null,
+  "dependencies": [],
+  "description": "Ad-blocker with DNS and DHCP services",
+  "environment": [
+    {
+      "variable": "PIHOLE_ADMIN_PASSWORD",
+      "generate": "password"
+    }
+  ],
+  "install": [
+    {
+      "template": "service.yml",
+      "service": "service.yml",
+      "tracked": true
+    }
+  ],
+  "service": "pihole6"
+}

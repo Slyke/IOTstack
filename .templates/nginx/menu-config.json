@@ -1,0 +1,19 @@
+{
+  "configure": null,
+  "dependencies": [],
+  "description": "Reverse-proxy manager",
+  "environment": [
+    {
+      "variable": "NGINX_INITIAL_ADMIN_PASSWORD",
+      "generate": "password"
+    }
+  ],
+  "install": [
+    {
+      "template": "service.yml",
+      "service": "service.yml",
+      "tracked": true
+    }
+  ],
+  "service": "nginx"
+}

@@ -1,0 +1,23 @@
+{
+  "configure": "build.py",
+  "dependencies": [],
+  "description": "Self-hosted cloud software",
+  "environment": [
+    {
+      "variable": "NEXTCLOUD_DB_ROOT_PASSWORD",
+      "generate": "password"
+    },
+    {
+      "variable": "NEXTCLOUD_DB_USER_PASSWORD",
+      "generate": "password"
+    }
+  ],
+  "install": [
+    {
+      "template": "service.yml",
+      "service": "service.yml",
+      "tracked": true
+    }
+  ],
+  "service": "nextcloud"
+}

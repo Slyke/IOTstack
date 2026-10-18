@@ -109,11 +109,28 @@ def buildStack():
   execLocals = {}
   screenActive = False
   print(term.clear())
-  exec(code, execGlobals, execLocals)
-  buildComplete = execGlobals["results"]["buildState"]
-  signal.signal(signal.SIGWINCH, onResize)
-  screenActive = True
-  needsRender = 1
+  try:
+    exec(code, execGlobals, execLocals)
+    buildComplete = execGlobals["results"]["buildState"]
+  except Exception as error:
+    from deps.issue_viewer import runIssueViewer
+    runIssueViewer(term, renderMode, [("Build Stack", "Error", str(error))])
+    buildComplete = False
+  finally:
+    signal.signal(signal.SIGWINCH, onResize)
+    screenActive = True
+    needsRender = 1
+
+def manageServices():
+  global screenActive, needsRender
+  from deps.service_management_menu import runServiceMenu
+  screenActive = False
+  try:
+    runServiceMenu(term, renderMode)
+  finally:
+    signal.signal(signal.SIGWINCH, onResize)
+    screenActive = True
+    needsRender = 1
 
 def runExampleMenu():
   global screenActive
@@ -250,6 +267,7 @@ def upgradeDocker():
 
 baseMenu = [
   ["Build Stack", buildStack],
+  ["Manage Services", manageServices],
   ["Docker Commands", dockerCommands],
   ["Miscellaneous Commands", miscCommands],
   ["Backup and Restore", backupAndRestore],

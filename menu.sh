@@ -292,7 +292,16 @@ function do_installer_checks() {
 # Menu bootstrap entry point
 # ----------------------------------------------
 
-if [[ "$*" == *"--no-check"* ]]; then
+SERVICE_CLI=false
+SERVICE_ARGS=()
+if [[ "${1:-}" == "services" ]]; then
+  SERVICE_CLI=true
+  shift
+  SERVICE_ARGS=("$@")
+  set --
+fi
+
+if [[ "$SERVICE_CLI" == "true" ]] || [[ "$*" == *"--no-check"* ]]; then
 	echo "Skipping preflight checks."
 else
 	do_project_checks
@@ -334,7 +343,7 @@ do
 done
 
 # This section is temporary, it's just for notifying people of potential breaking changes.
-if [[ -f .new_install ]]; then
+if [[ "$SERVICE_CLI" == "true" ]] || [[ -f .new_install ]]; then
 	echo "Existing installation detected."
 else
 	if [[ -f docker-compose.yml ]]; then
@@ -364,4 +373,8 @@ else
 fi
 
 # Hand control to new menu
-$PYTHON_CMD ./scripts/menu_main.py $ENCODING_TYPE
+if [[ "$SERVICE_CLI" == "true" ]]; then
+  exec "$PYTHON_CMD" ./scripts/service_manager.py "${SERVICE_ARGS[@]}"
+else
+  "$PYTHON_CMD" ./scripts/menu_main.py "$ENCODING_TYPE"
+fi

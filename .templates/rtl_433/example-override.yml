@@ -1,0 +1,5 @@
+rtl_433:
+  command: >-
+    -M time:unix:usec:utc
+    -M protocol
+    -F mqtt://mosquitto:1883

@@ -1,0 +1,19 @@
+{
+  "configure": null,
+  "dependencies": [],
+  "description": "Graphical user interface to PostgreSQL",
+  "environment": [
+    {
+      "variable": "PGADMIN_DEFAULT_PASSWORD",
+      "generate": "password"
+    }
+  ],
+  "install": [
+    {
+      "template": "service.yml",
+      "service": "service.yml",
+      "tracked": true
+    }
+  ],
+  "service": "pgadmin4"
+}

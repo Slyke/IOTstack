@@ -212,6 +212,7 @@ def isSensitiveEnvironmentName(name):
     "SECRET",
     "TOKEN",
     "AUTHORIZATION",
+    "AUTHKEY",
     "API_KEY",
   ))
 

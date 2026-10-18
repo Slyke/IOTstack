@@ -58,3 +58,10 @@ does not overwrite the files you have already created. Because the build script
 does not overwrite your service directory any changes in the .templates
 directory will have no affect on the services you have already made. You will
 need to move your service folder out to get the latest version of the template.
+
+## Service management
+
+The Python menu includes **Manage Services** for installation, activation, repair,
+and template updates. These actions are also available through
+`./menu.sh services`. See [Python service management](../Developers/Python-Menu-Integration.md)
+for commands, migration behavior, and update handling.

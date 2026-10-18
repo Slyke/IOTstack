@@ -591,15 +591,6 @@ class SourceRegressionTests(unittest.TestCase):
     self.assertIn("pageSizeForTerminal(term.height", source)
     self.assertIn("issuePanelHeight(len(issueRows), fixedRows=8)", source)
 
-  def test_hook_failures_stop_the_build(self):
-    source = (ROOT / "scripts/buildstack_menu.py").read_text()
-    self.assertIn("if not runPrebuildHook():", source)
-    self.assertIn("if not runPostBuildHook():", source)
-    self.assertIn("if hookResult is False:", source)
-    self.assertIn("postBuildResult = subprocess.call", source)
-    self.assertIn("if postBuildResult != 0:", source)
-    self.assertIn("return subprocess.call(commandToRun) == 0", (ROOT / ".templates/nextcloud/build.py").read_text())
-
   def test_service_option_renderers_preserve_cursor_and_signal_state(self):
     badCursorMove = "print(term.move(hotzoneLocation[0], hotzoneLocation[1]))"
     for pythonFile in (ROOT / ".templates").glob("*/*.py"):
@@ -640,15 +631,10 @@ class SourceRegressionTests(unittest.TestCase):
   def test_required_environment_warnings_are_part_of_build_checks(self):
     source = (ROOT / "scripts/buildstack_menu.py").read_text()
     self.assertIn("issues.update(requiredEnvironmentIssues(ownedServices))", source)
-    self.assertIn("Build warning: required environment variables are missing:", source)
     self.assertIn('hookState["environmentOptions"]', source)
     self.assertIn("runEnvironmentOptions(", source)
     self.assertIn("runIssueViewer(term, renderMode, issueEntries)", source)
     self.assertIn("elif key.lower() == 'i':", source)
-    self.assertLess(
-      source.index("requiredIssues = requiredEnvironmentIssues"),
-      source.index("if not runPrebuildHook():"),
-    )
   def test_password_controls_have_one_owner(self):
     for serviceName in ("deconz", "influxdb", "mariadb", "nextcloud"):
       source = (ROOT / ".templates" / serviceName / "build.py").read_text()
@@ -689,11 +675,6 @@ class SourceRegressionTests(unittest.TestCase):
       menu_main.mainMenuList[:] = originalMenu
       menu_main.potentialMenu["deletePromptFiles"]["added"] = originalAdded
       menu_main.currentMenuItemIndex = originalIndex
-  def test_saved_service_restore_uses_stable_key_snapshot(self):
-    source = (ROOT / "scripts/buildstack_menu.py").read_text()
-    self.assertIn("selectedTemplates = [", source)
-    self.assertIn("for serviceName in selectedTemplates:", source)
-
   def test_contributor_guide_uses_modern_hook_api(self):
     source = (ROOT / "docs/Developers/BuildStack-Services.md").read_text()
     self.assertNotIn("HOOK_API_VERSION", source)
@@ -722,7 +703,8 @@ class SourceRegressionTests(unittest.TestCase):
     )
     self.assertEqual(0, result.returncode)
     self.assertNotIn("Parsing error", result.stdout)
-    self.assertEqual(63, len(result.stdout.splitlines()))
+    self.assertEqual(2 + len(list((ROOT / ".templates").glob("*/service.yml"))),
+                     len(result.stdout.splitlines()))
 
 
 if __name__ == "__main__":

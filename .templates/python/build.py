@@ -51,10 +51,10 @@ def main():
     if not os.path.exists(serviceService):
       os.makedirs(serviceService, exist_ok=True)
 
-    # copy supporting files
-    shutil.copy(r'%s/Dockerfile' % serviceTemplate, r'%s/Dockerfile' % serviceService)
-    shutil.copy(r'%s/docker-entrypoint.sh' % serviceTemplate, r'%s/docker-entrypoint.sh' % serviceService)
-    shutil.copytree(r'%s/app' % serviceTemplate, r'%s/app' % serviceService)
+    # Repair missing starter files without replacing the user's application.
+    from deps.service_catalog import copyMissing
+    for item in ("Dockerfile", "docker-entrypoint.sh", "app"):
+      copyMissing(serviceTemplate + "/" + item, serviceService + "/" + item)
 
     return True
 

@@ -1,77 +1,44 @@
 # pgAdmin4
 
-## References
+pgAdmin4 provides a graphical interface to PostgreSQL. New installations use the
+official `dpage/pgadmin4:latest` image. See the
+[container deployment documentation](https://www.pgadmin.org/docs/pgadmin4/latest/container_deployment.html)
+for supported platforms and configuration.
 
-- [Docker Hub](https://hub.docker.com/r/gpongelli/pgadmin4-arm)
-- [GitHub](https://github.com/gpongelli/pgadmin4-docker-arm/)
-- [pgAdmin4 home page](https://www.pgadmin.org)
+## Setup
 
-## About
+Select `pgadmin4` in the Python menu, then use **Options** to set
+`PGADMIN_DEFAULT_EMAIL` and `PGADMIN_DEFAULT_PASSWORD`. Installation can generate
+the initial password in `.env`; these variables initialize the administrator
+account on first launch. The HTTP interface is exposed on port `5050`.
 
-pgAdmin4 is a graphical user interface to PostgreSQL.
+The official image runs as UID/GID 5050. Before starting a new installation,
+prepare its bind-mounted data directory from the IOTstack directory:
 
-## Configuration
-
-### Runtime image
-
-The service definition includes the following lines:
-
-``` yaml
-  image: gpongelli/pgadmin4-arm:latest-armv7
-  platform: linux/arm/v7
-# image: gpongelli/pgadmin4-arm:latest-armv8
+```console
+sudo install -d -o 5050 -g 5050 -m 700 ./volumes/pgadmin4/pgadmin
+docker compose up -d pgadmin4
 ```
 
-The ARMv7 image is enabled by default. This will run on both 32-bit (ARMv7) and 64-bit (ARMv8) systems. The `platform` clause silences warnings from docker-compose that arise when you try to run an ARMv7 image on ARMv8 architecture.
+Open `http://YOUR-HOST:5050` and sign in using the configured email and password.
+Use **Add New Server** to register PostgreSQL. When using IOTstack's `postgres`
+service on the same Docker network, the hostname is `postgres` and the port is
+`5432`. Supply its configured database, username, and password.
 
-If you are running on a full 64-bit system, you should edit your service definition so that it looks like this:
+Only `./volumes/pgadmin4/pgadmin:/var/lib/pgadmin` is persisted. Do not mount a
+volume over `/pgadmin4`: that is application code supplied by the image, and
+persisting it can prevent image upgrades from replacing old code.
 
-``` yaml
-# image: gpongelli/pgadmin4-arm:latest-armv7
-# platform: linux/arm/v7
-  image: gpongelli/pgadmin4-arm:latest-armv8
-```
+`TZ` uses the shared `.env` setting, defaulting to `Etc/UTC`. HTTPS can be supplied
+by a reverse proxy; native container TLS requires additional certificate setup
+described in the official documentation.
 
-### Container Time Zone
+## Existing installations
 
-The service definition includes the `TZ` environment variable. It defaults to `Etc/UTC`. You can either edit the environment variable directly in your compose file, or provide your own substitute by editing `~/IOTstack/.env`. Example:
-
-``` console
-$ cat ~/IOTstack/.env
-TZ=Australia/Sydney
-```
-
-## First run
-
-These instructions assume you have selected the `postgresql` container from the IOTstack menu, and that that container is running.
-
-Complete the following steps:
-
-1. Use your web browser to connect to pgAdmin4 on port `5050`. For example:
-
-	* `http://raspberrypi.local:5050`
-
-	The pgAdmin4 service takes a while to start so please be patient if you have only just launched the container. Once your browser is able to connect to pgAdmin4 successfully, the home screeen will be displayed, overlaid with a prompt to enter a master password:
-
-	![](images/pgadmin4-initial.jpeg)
-
-2. Enter a master password.
-3. Click "OK" to set the master password. The dialog will disappear leaving the home screen.
-4. Click "Add New Server". This displays the server registration sheet:
-
-	![](images/pgadmin4-general.jpeg)
-
-5. Give the server a name. The name is not important. It just needs to be meaningful to you.
-6. Click the "Connection" tab:
-
-	![](images/pgadmin4-connection.jpeg)
-
-7. Enter the name of the PostgreSQL container (ie "postgres").
-8. The default port is 5432. This is the **internal** port number the PostgreSQL container is listening on. It is unlikely that you will need to change this.
-9. In the "Maintenance database" field, enter the *value* of the `POSTGRES_DB` environment variable as it applies to the PostgreSQL container.
-10. In the "Username" field, enter the *value* of the `POSTGRES_USER` environment variable as it applies to the PostgreSQL container.
-11. In the "Password" field, enter the *value* of the `POSTGRES_PASSWORD` environment variable as it applies to the PostgreSQL container.
-12. Enable the "Save password" switch if you think that is appropriate.
-13. Click the "Save" button.
-
-Keep in mind that the values of the environment variables you set in steps 9, 10 and 11 only apply the first time you launch the PostgreSQL container. If you change any of these in PostgreSQL, you will have to make matching changes in pgAdmin4.
+The service manager preserves installed definitions, including the previous
+`gpongelli/pgadmin4-arm` image and data paths. Template upgrade may produce a
+`service.yml.upstream` candidate for review. Adopting it is a separate application
+migration: back up the existing data, check image architecture support, and follow
+pgAdmin's migration guidance. Do not point the new image at existing data or change
+its ownership without checking that migration first. In particular, 32-bit ARM
+hosts must verify image support before moving away from their existing image.

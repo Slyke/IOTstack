@@ -8,12 +8,12 @@ def main():
   import os
   import ruamel.yaml
   import sys
-  import subprocess
   import traceback
   from deps.chars import specialChars, commonTopBorder, commonBottomBorder, commonEmptyLine, commonTextLine, padText
-  from deps.consts import servicesDirectory, templatesDirectory, buildCache, envFile, dockerPathOutput, servicesFileName, composeOverrideFile
-  from deps.yaml_merge import mergeYaml
-  from deps.service_templates import loadServiceTemplate, mergeServiceTemplate, removeServiceTemplate, restoreSavedServiceTemplates
+  from deps.consts import templatesDirectory, servicesFileName
+  from deps.service_catalog import ServiceManager
+  from deps.stack_builder import buildStack
+  from deps.service_templates import loadServiceTemplate, mergeServiceTemplate, removeServiceTemplate
   from deps.menu_renderer import issuePanelHeight, pageSizeForTerminal, paginationStart, serviceOptionsMessage, terminalSupportsMenu
   from deps.service_hooks import HookContext, serviceHookAvailable, runServiceHook
   from deps.compose_environment import (
@@ -38,12 +38,12 @@ def main():
 
   # Constants
   buildScriptFile = 'build.py'
-  dockerSavePathOutput = buildCache
 
   # Runtime vars
   menu = []
   dockerComposeServicesYaml = {}
-  templatesDirectoryFolders = next(os.walk(templatesDirectory))[1]
+  manager = ServiceManager()
+  templatesDirectoryFolders = manager.catalog.names
   term = Terminal()
   hotzoneLocation = [7, 0] # Top text
   paginationStartIndex = 0
@@ -58,55 +58,14 @@ def main():
   reservedLines = 19 if hideHelpText else 27
   paginationSize = pageSizeForTerminal(term.height, reservedLines=reservedLines)
 
-  def buildServices(): # TODO: Move this into a dependency so that it can be executed with just a list of services.
+  def buildServices():
     global dockerComposeServicesYaml
     try:
-      requiredIssues = requiredEnvironmentIssues(dockerComposeServicesYaml)
-      if requiredIssues:
-        print("")
-        print("Build warning: required environment variables are missing:")
-        for description in requiredIssues.values():
-          print("* %s" % description)
-        print("Add the missing values to .env before building this stack.")
-        input("Press Enter to continue...")
-        return False
-      if not runPrebuildHook():
-        return False
-      menuStateFileYaml = {}
-      menuStateFileYaml["services"] = dockerComposeServicesYaml
-
-      with open(r'%s' % envFile) as fileEnv:
-        dockerFileYaml = yaml.load(fileEnv)
-      dockerFileYaml["services"] = dockerComposeServicesYaml
-
-      if os.path.exists(composeOverrideFile):
-        with open(r'%s' % composeOverrideFile) as fileOverride:
-          yamlOverride = yaml.load(fileOverride)
-
-        mergedYaml = mergeYaml(yamlOverride, dockerFileYaml)
-        dockerFileYaml = mergedYaml
-
-      with open(r'%s' % dockerPathOutput, 'w') as outputFile:
-        yaml.dump(dockerFileYaml, outputFile)
-
-      if not os.path.exists(servicesDirectory):
-        os.makedirs(servicesDirectory, exist_ok=True)
-
-      with open(r'%s' % dockerSavePathOutput, 'w') as outputFile:
-        yaml.dump(menuStateFileYaml, outputFile)
-      if not runPostBuildHook():
-        return False
-
-      if os.path.exists('./postbuild.sh'):
-        postBuildCommand = ["./postbuild.sh"] + list(dockerComposeServicesYaml)
-        postBuildResult = subprocess.call(postBuildCommand)
-        if postBuildResult != 0:
-          print("postbuild.sh failed with exit status %s." % postBuildResult)
-          input("Press Enter to continue...")
-          return False
-
+      dockerComposeServicesYaml = buildStack(
+        manager, checkedMenuItems, dockerComposeServicesYaml, renderMode, term
+      )
       return True
-    except Exception as err: 
+    except Exception:
       print("Issue running build:")
       traceback.print_exc()
       input("Press Enter to continue...")
@@ -372,19 +331,10 @@ def main():
       if menuItem[1]["checked"]:
         checkedMenuItems.append(menuItem[0])
 
-  def loadAllServices(reload = False):
-    global dockerComposeServicesYaml
-    dockerComposeServicesYaml.clear()
-    for (index, checkedMenuItem) in enumerate(checkedMenuItems):
-      templateServices = loadServiceTemplate(yaml, templatesDirectory, checkedMenuItem, servicesFileName)
-      mergeServiceTemplate(dockerComposeServicesYaml, templateServices, reload=reload)
-
-    return True
-
   def loadService(serviceName, reload = False):
     try:
       global dockerComposeServicesYaml
-      templateServices = loadServiceTemplate(yaml, templatesDirectory, serviceName, servicesFileName)
+      templateServices = manager.definitions([serviceName])
       mergeServiceTemplate(dockerComposeServicesYaml, templateServices, reload=reload)
     except Exception as err:
       print("Error running build menu:", err)
@@ -472,52 +422,6 @@ def main():
         input("Press any key to exit...")
         sys.exit(1)
 
-  def runPrebuildHook():
-    global dockerComposeServicesYaml
-    for (index, checkedMenuItem) in enumerate(checkedMenuItems):
-      buildScriptPath = templatesDirectory + '/' + checkedMenuItem + '/' + buildScriptFile
-      if not os.path.exists(buildScriptPath):
-        continue
-
-      try:
-        context = createHookContext(checkedMenuItem)
-        if serviceHookAvailable(buildScriptPath, "preBuild", context):
-          hookResult = runServiceHook(buildScriptPath, "preBuild", context)
-          if hookResult is False:
-            print("preBuild reported a failure for '%s'." % checkedMenuItem)
-            input("Press Enter to continue...")
-            return False
-        dockerComposeServicesYaml = context.services
-      except Exception:
-        print("Error running preBuild on '%s'" % checkedMenuItem)
-        traceback.print_exc()
-        input("Press Enter to continue...")
-        return False
-    return True
-
-  def runPostBuildHook():
-    global dockerComposeServicesYaml
-    for (index, checkedMenuItem) in enumerate(checkedMenuItems):
-      buildScriptPath = templatesDirectory + '/' + checkedMenuItem + '/' + buildScriptFile
-      if not os.path.exists(buildScriptPath):
-        continue
-
-      try:
-        context = createHookContext(checkedMenuItem)
-        if serviceHookAvailable(buildScriptPath, "postBuild", context):
-          hookResult = runServiceHook(buildScriptPath, "postBuild", context)
-          if hookResult is False:
-            print("postBuild reported a failure for '%s'." % checkedMenuItem)
-            input("Press Enter to continue...")
-            return False
-        dockerComposeServicesYaml = context.services
-      except Exception:
-        print("Error running postBuild on '%s'" % checkedMenuItem)
-        traceback.print_exc()
-        input("Press Enter to continue...")
-        return False
-    return True
-
   def executeServiceOptions():
     global dockerComposeServicesYaml
     menuItem = menu[selection]
@@ -575,48 +479,36 @@ def main():
         return index
 
   def checkMenuItem(selection):
-    global dockerComposeServicesYaml
-    if menu[selection][1]["checked"] == True:
+    global dockerComposeServicesYaml, transientMessage
+    name = menu[selection][0]
+    if menu[selection][1]["checked"]:
+      dependants = [
+        other[0] for other in menu if other[1]["checked"] and other[0] != name
+        and name in manager.catalog.dependencies([other[0]])
+      ]
+      if dependants:
+        transientMessage = "Required by: " + ", ".join(dependants)
+        return
       menu[selection][1]["checked"] = False
       menu[selection][1]["issues"] = None
-      templateServices = loadServiceTemplate(yaml, templatesDirectory, menu[selection][0], servicesFileName)
-      removeServiceTemplate(dockerComposeServicesYaml, templateServices)
+      removeServiceTemplate(dockerComposeServicesYaml, manager.catalog.definition(name))
     else:
-      menu[selection][1]["checked"] = True
-      print(menu[selection][0])
-      loadService(menu[selection][0])
+      for dependency in manager.catalog.dependencies([name]):
+        index = getMenuItemIndexByService(dependency)
+        menu[index][1]["checked"] = True
+        loadService(dependency)
 
   def prepareMenuState():
-    global dockerComposeServicesYaml
-    selectedTemplates = [
-      serviceName for serviceName in dockerComposeServicesYaml
-      if serviceName in templatesList
-    ]
-    for serviceName in selectedTemplates:
-      checkMenuItem(getMenuItemIndexByService(serviceName))
-      setCheckedMenuItems()
-      checkForIssues()
-
+    for menuItem in menu:
+      menuItem[1]["checked"] = menuItem[0] in manager.active()
+    setCheckedMenuItems()
+    checkForIssues()
     return True
 
   def loadCurrentConfigs(templatesList):
     global dockerComposeServicesYaml
-    if os.path.exists(dockerSavePathOutput):
-      print("Loading config fom: '%s'" % dockerSavePathOutput)
-      with open(r'%s' % dockerSavePathOutput) as fileSavedConfigs:
-        previousConfigs = yaml.load(fileSavedConfigs)
-        if not previousConfigs == None:
-          if "services" in previousConfigs:
-            dockerComposeServicesYaml = restoreSavedServiceTemplates(
-              yaml,
-              templatesDirectory,
-              templatesList,
-              previousConfigs["services"],
-              servicesFileName,
-            )
-            return bool(dockerComposeServicesYaml)
-    dockerComposeServicesYaml = {}
-    return False
+    dockerComposeServicesYaml = manager.definitions()
+    return bool(dockerComposeServicesYaml)
 
   def onResize(sig, action):
     mainRender(menu, selection, 1)

@@ -1,0 +1,19 @@
+{
+  "configure": "build.py",
+  "dependencies": [],
+  "description": "REST-API interface to Zigbee",
+  "environment": [
+    {
+      "variable": "DECONZ_VNC_PASSWORD",
+      "generate": "password"
+    }
+  ],
+  "install": [
+    {
+      "template": "service.yml",
+      "service": "service.yml",
+      "tracked": true
+    }
+  ],
+  "service": "deconz"
+}

@@ -1,0 +1,14 @@
+{
+  "configure": "build.py",
+  "dependencies": [],
+  "description": "Home Assistant (non-supervised)",
+  "environment": [],
+  "install": [
+    {
+      "template": "service.yml",
+      "service": "service.yml",
+      "tracked": true
+    }
+  ],
+  "service": "home_assistant"
+}

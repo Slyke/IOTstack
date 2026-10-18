@@ -50,7 +50,10 @@ def main():
       os.makedirs(serviceService, exist_ok=True)
 
     # Files copy
-    shutil.copy(r'%s/Dockerfile' % serviceTemplate, r'%s/Dockerfile' % serviceService)
+    # Retain the build context for existing installations using the old image.
+    if "build" in dockerComposeServicesYaml[currentServiceName]:
+      from deps.service_catalog import copyMissing
+      copyMissing(serviceTemplate + "/Dockerfile", serviceService + "/Dockerfile")
     return True
 
   # #####################################

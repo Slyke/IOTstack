@@ -1,0 +1,16 @@
+{
+  "configure": null,
+  "dependencies": [
+    "influxdb"
+  ],
+  "description": "Alerts, ETL jobs, detect anomalies",
+  "environment": [],
+  "install": [
+    {
+      "template": "service.yml",
+      "service": "service.yml",
+      "tracked": true
+    }
+  ],
+  "service": "kapacitor"
+}

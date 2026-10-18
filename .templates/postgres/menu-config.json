@@ -1,0 +1,19 @@
+{
+  "configure": null,
+  "dependencies": [],
+  "description": "PostgreSQL relational DBMS",
+  "environment": [
+    {
+      "variable": "POSTGRES_PASSWORD",
+      "generate": "password"
+    }
+  ],
+  "install": [
+    {
+      "template": "service.yml",
+      "service": "service.yml",
+      "tracked": true
+    }
+  ],
+  "service": "postgres"
+}

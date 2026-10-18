@@ -1,0 +1,23 @@
+{
+  "configure": null,
+  "dependencies": [],
+  "description": "Web content management system",
+  "environment": [
+    {
+      "variable": "WORDPRESS_ROOT_PASSWORD",
+      "generate": "password"
+    },
+    {
+      "variable": "WORDPRESS_DB_PASSWORD",
+      "generate": "password"
+    }
+  ],
+  "install": [
+    {
+      "template": "service.yml",
+      "service": "service.yml",
+      "tracked": true
+    }
+  ],
+  "service": "wordpress"
+}
